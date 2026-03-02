@@ -190,7 +190,7 @@
 
   <div class="step-nav" id="stepNav">
     <div class="step-pill active" onclick="goToStep(0)" id="pill-0"><div class="step-num">1</div><span class="step-label">Track</span></div>
-    <div class="step-pill locked" id="pill-1"><div class="step-num">2</div><span class="step-label">Call</span></div>
+    <div class="step-pill locked" id="pill-1"><div class="step-num">2</div><span class="step-label">Setup</span></div>
     <div class="step-pill locked" id="pill-2"><div class="step-num">3</div><span class="step-label">Build</span></div>
     <div class="step-pill locked" id="pill-3"><div class="step-num">4</div><span class="step-label">Review</span></div>
     <div class="step-pill locked" id="pill-4"><div class="step-num">5</div><span class="step-label">Pizzaz</span></div>
@@ -246,48 +246,101 @@
   <!-- STEP 2 -->
   <div class="step-panel" id="step-1">
     <div class="card">
-      <div class="section-label" style="color:var(--blue)">Step 2 — Call</div>
-      <h2>Pull the data you need from Orb</h2>
-      <p>The leaderboard requires two sequential API calls — first to discover your license types, then to query per-user usage for each one. Both use cursor-based pagination and <code>YYYY-MM-DD</code> date params.</p>
+      <div class="section-label" style="color:var(--blue)">Step 2 — Setup</div>
+      <h2>Leaderboards run on Licenses.</h2>
+      <p style="margin-bottom:14px">Licenses are how top AI companies model per-user usage on team plans. Instead of pooling all consumption together, each user gets their own allotted credit budget to draw down. This means one power user can't deplete a whole team's usage — and reporting on individual-level usage becomes a first-class capability, not an afterthought.</p>
+      <p style="margin-bottom:24px">Orb supports this natively with the <strong>Licenses API</strong>. To call it, you'll need your <code>ORB_SUBSCRIPTION_ID</code> and an <code>ORB_API_KEY</code> from your Orb dashboard.</p>
 
-      <div style="margin-top:24px">
-        <div class="endpoint-tabs">
-          <div class="endpoint-tab active" onclick="switchEndpoint(this,'lic')">① GET /license_types</div>
-          <div class="endpoint-tab" onclick="switchEndpoint(this,'usage')">② GET /licenses/usage</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px">
+        <div style="background:rgba(91,114,251,0.06);border:1px solid rgba(91,114,251,0.18);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:22px;margin-bottom:6px">🪣</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">Individual credit pools</div>
+          <div style="font-size:11px;color:var(--ink-mid);line-height:1.5">Each user has their own allotment — no more one person draining the team budget.</div>
         </div>
-
-        <div id="ep-lic">
-          <p style="font-size:13px;margin-bottom:16px">List all license types for your account. Required first step — the usage endpoint needs a <code>license_type_id</code>. Each type has an <code>id</code>, <code>name</code>, and <code>grouping_key</code>. Most accounts have one (e.g. "AI Seat"). If yours has several, the pipeline fetches usage for each and sums credits per user.</p>
-          <div class="code-block"><span class="code-keyword">GET</span> https://api.withorb.com/v1/license_types?limit=100
-Authorization: Bearer <span class="code-string">{ORB_API_KEY}</span></div>
-          <div class="response-block">{"data":[{"id":"lt_abc123","name":"AI Seat","grouping_key":"user_id"}],"pagination_metadata":{"has_more":false,"next_cursor":null}}</div>
-          <div class="callout callout-blue" style="margin-top:12px">
-            <p class="callout-title">Why this step exists</p>
-            <p>There's no way to query all usage without knowing your type IDs first. Fetching license types upfront also future-proofs the pipeline: add a second tier later and the loop handles it automatically.</p>
-          </div>
+        <div style="background:rgba(95,138,77,0.07);border:1px solid rgba(95,138,77,0.2);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:22px;margin-bottom:6px">📊</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">Per-user reporting</div>
+          <div style="font-size:11px;color:var(--ink-mid);line-height:1.5">Individual-level usage is a first-class API capability, not a custom query.</div>
         </div>
-
-        <div id="ep-usage" style="display:none">
-          <p style="font-size:13px;margin-bottom:4px">Fetch per-license credit consumption for a date range. Run once per license type, per time window. The leaderboard makes <strong>three parallel fetches</strong> per page load: current week, previous week (rank change), and Jan 1 → today (Q1 progress).</p>
-          <p style="font-size:13px;color:var(--ink-muted);margin-bottom:16px">Key: <code>external_license_id</code> = display name, <code>consumed_credits</code> = usage value.</p>
-          <div class="code-block"><span class="code-keyword">GET</span> https://api.withorb.com/v1/licenses/usage
-  ?subscription_id=<span class="code-string">{ORB_SUBSCRIPTION_ID}</span>
-  &license_type_id=<span class="code-string">lt_abc123</span>
-  &start_date=<span class="code-string">2026-02-23</span>
-  &end_date=<span class="code-string">2026-03-01</span>
-  &group_by=<span class="code-string">license</span>
-  &limit=<span class="code-string">100</span>
-Authorization: Bearer <span class="code-string">{ORB_API_KEY}</span></div>
-          <div class="response-block">{"data":[{"license_id":"lic_xyz","external_license_id":"Elena Marchetti","consumed_credits":48210,"allocated_credits":100000,"remaining_credits":51790,"start_date":"2026-02-23","end_date":"2026-03-01","pricing_unit":"credit"}],"pagination_metadata":{"has_more":true,"next_cursor":"cur_ynx8..."}}</div>
-          <div class="callout callout-green" style="margin-top:12px">
-            <p class="callout-title">Pagination pattern</p>
-            <p>Follow <code>pagination_metadata.next_cursor</code> in a do-while loop until it's <code>null</code>. Aggregate by <code>external_license_id</code>, summing <code>consumed_credits</code> across license types before ranking.</p>
-          </div>
+        <div style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:22px;margin-bottom:6px">🏆</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">Leaderboard-ready</div>
+          <div style="font-size:11px;color:var(--ink-mid);line-height:1.5">The data shape maps directly to ranked tables, progress bars, and award logic.</div>
         </div>
       </div>
 
-      <hr class="divider">
-      <p style="font-size:13px">Both calls use the same <code>Authorization: Bearer</code> header. Only inputs needed: <code>ORB_API_KEY</code> and <code>ORB_SUBSCRIPTION_ID</code> — set as Vercel env vars, never exposed to the browser.</p>
+      <div class="endpoint-tabs">
+        <div class="endpoint-tab active" onclick="switchEndpoint(this,'lic')">① GET /license_types</div>
+        <div class="endpoint-tab" onclick="switchEndpoint(this,'usage')">② GET /licenses/usage</div>
+      </div>
+
+      <div id="ep-lic">
+        <p style="font-size:13px;margin-bottom:14px">Call this first to discover your license type IDs. The usage endpoint requires a <code>license_type_id</code>, so this is a required prerequisite. Most accounts have one type (e.g. "AI Seat").</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px">Sample curl</span>
+          <button onclick="copyCode('curl-lic')" style="font-size:11px;font-weight:600;color:var(--blue);background:none;border:none;cursor:pointer;padding:0">Copy</button>
+        </div>
+        <div class="code-block" id="curl-lic">curl https://api.withorb.com/v1/license_types?limit=100 \
+  -H <span class="code-string">"Authorization: Bearer $ORB_API_KEY"</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Sample response</div>
+        <div class="response-block">{
+  "data": [
+    {
+      "id": "lt_abc123",
+      "name": "AI Seat",
+      "grouping_key": "user_id"
+    }
+  ],
+  "pagination_metadata": {
+    "has_more": false,
+    "next_cursor": null
+  }
+}</div>
+        <div class="callout callout-blue" style="margin-top:12px">
+          <p class="callout-title">What you need from this response</p>
+          <p>Save the <code>id</code> field from each license type. You'll pass it as <code>license_type_id</code> in Call 2. If you have multiple types, the leaderboard pipeline fetches usage for each and sums credits per user automatically.</p>
+        </div>
+      </div>
+
+      <div id="ep-usage" style="display:none">
+        <p style="font-size:13px;margin-bottom:14px">Fetch per-user credit consumption for any date range. Use <code>external_license_id</code> as the display name and <code>consumed_credits</code> as the usage value. The leaderboard makes three parallel calls: current week, previous week (for rank changes), and Jan 1 → today (for Q1 progress bars).</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px">Sample curl</span>
+          <button onclick="copyCode('curl-usage')" style="font-size:11px;font-weight:600;color:var(--blue);background:none;border:none;cursor:pointer;padding:0">Copy</button>
+        </div>
+        <div class="code-block" id="curl-usage">curl "https://api.withorb.com/v1/licenses/usage\
+?subscription_id=$ORB_SUBSCRIPTION_ID\
+&license_type_id=lt_abc123\
+&start_date=2026-02-23\
+&end_date=2026-03-01\
+&group_by=license\
+&limit=100" \
+  -H <span class="code-string">"Authorization: Bearer $ORB_API_KEY"</span></div>
+        <div style="font-size:11px;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Sample response</div>
+        <div class="response-block">{
+  "data": [
+    {
+      "license_id": "lic_xyz",
+      "external_license_id": "Elena Marchetti",
+      "consumed_credits": 48210,
+      "allocated_credits": 100000,
+      "remaining_credits": 51790,
+      "start_date": "2026-02-23",
+      "end_date": "2026-03-01",
+      "pricing_unit": "credit"
+    }
+  ],
+  "pagination_metadata": {
+    "has_more": true,
+    "next_cursor": "cur_ynx8..."
+  }
+}</div>
+        <div class="callout callout-green" style="margin-top:12px">
+          <p class="callout-title">Key fields for the leaderboard</p>
+          <p><code>external_license_id</code> is the user's display name. <code>consumed_credits</code> is their usage — not <code>credits_used</code>. Follow <code>pagination_metadata.next_cursor</code> in a loop until it's <code>null</code> to get all users.</p>
+        </div>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-outline" onclick="prevStep()">← Back</button>
         <button class="btn btn-blue" onclick="nextStep()">Got it — let's build →</button>
@@ -300,70 +353,13 @@ Authorization: Bearer <span class="code-string">{ORB_API_KEY}</span></div>
     <div class="card">
       <div class="section-label" style="color:var(--green)">Step 3 — Build</div>
       <h2>Structure and automate the pipeline</h2>
-      <p>Key architecture decisions that shape the app, and the two most important code patterns.</p>
+      <p style="margin-bottom:24px">Key architecture decisions that shape the app.</p>
 
       <div class="decision-grid">
         <div class="decision-card"><div class="decision-label">Framework</div><div class="decision-value">Next.js 15</div><div class="decision-sub">App Router + async server components. <code>searchParams</code> must be awaited — it's a Promise in Next 15.</div></div>
         <div class="decision-card"><div class="decision-label">Data fetching</div><div class="decision-value">On load, server-side</div><div class="decision-sub">Three parallel fetches via <code>Promise.all</code>: current week, previous week, Q1 to date. No cron, no database.</div></div>
         <div class="decision-card"><div class="decision-label">UI</div><div class="decision-value">shadcn/ui + Tailwind</div><div class="decision-sub">Date picker is <code>"use client"</code>; everything else server-rendered. Week stored in URL as <code>?start=&end=</code>.</div></div>
         <div class="decision-card"><div class="decision-label">Config</div><div class="decision-value">Env vars only</div><div class="decision-sub"><code>ORB_API_KEY</code> and <code>ORB_SUBSCRIPTION_ID</code> in Vercel dashboard. Never browser-exposed.</div></div>
-      </div>
-
-      <div class="snippet-tabs">
-        <button class="snippet-tab active" onclick="switchSnippet(this,'date')">⏱ Date Handling</button>
-        <button class="snippet-tab" onclick="switchSnippet(this,'fetch')">🔌 API Fetch + Pagination</button>
-      </div>
-      <div id="snippet-date">
-        <div class="code-block"><span class="code-comment">// lib/utils.ts — weeks run Monday → Sunday UTC</span>
-<span class="code-keyword">function</span> <span class="code-string">getCurrentWeekBounds</span>() {
-  <span class="code-keyword">const</span> now = <span class="code-keyword">new</span> Date();
-  <span class="code-keyword">const</span> daysFromMonday = (now.getUTCDay() + <span class="code-num">6</span>) % <span class="code-num">7</span>;
-  <span class="code-keyword">const</span> monday = <span class="code-keyword">new</span> Date(Date.UTC(
-    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysFromMonday
-  ));
-  <span class="code-keyword">const</span> sunday = <span class="code-keyword">new</span> Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + <span class="code-num">6</span>);
-  <span class="code-keyword">return</span> { start: monday, end: sunday };
-}
-<span class="code-comment">// Dates are YYYY-MM-DD — NOT ISO 8601 datetimes</span>
-<span class="code-keyword">const</span> toDateString = (d) =>
-  `${d.getUTCFullYear()}-${String(d.getUTCMonth()+<span class="code-num">1</span>).padStart(<span class="code-num">2</span>,<span class="code-string">"0"</span>)}-${String(d.getUTCDate()).padStart(<span class="code-num">2</span>,<span class="code-string">"0"</span>)}`;
-
-<span class="code-comment">// Three windows fetched in parallel on every page load</span>
-<span class="code-keyword">const</span> [currentUsage, prevUsage, q1Usage] = <span class="code-keyword">await</span> Promise.all([
-  fetchAggregatedUsage(subId, licenseTypes, thisWeekStart, thisWeekEnd),
-  fetchAggregatedUsage(subId, licenseTypes, prevWeekStart, prevWeekEnd),
-  fetchAggregatedUsage(subId, licenseTypes, jan1, today),
-]);</div>
-        <p style="font-size:12px;color:var(--ink-mid);margin-top:8px">Previous week is used only for rank change — not displayed. Q1 is always Jan 1 → today regardless of the selected week.</p>
-      </div>
-      <div id="snippet-fetch" style="display:none">
-        <div class="code-block"><span class="code-comment">// lib/orb.ts — do-while follows cursor until null</span>
-<span class="code-keyword">let</span> cursor = <span class="code-keyword">null</span>;
-<span class="code-keyword">do</span> {
-  <span class="code-keyword">const</span> params = <span class="code-keyword">new</span> URLSearchParams({
-    subscription_id: subscriptionId, license_type_id: licenseTypeId,
-    start_date: startDate, end_date: endDate, group_by: <span class="code-string">"license"</span>, limit: <span class="code-string">"100"</span>,
-  });
-  <span class="code-keyword">if</span> (cursor) params.set(<span class="code-string">"cursor"</span>, cursor);
-  <span class="code-keyword">const</span> res = <span class="code-keyword">await</span> fetch(
-    `https://api.withorb.com/v1/licenses/usage?${params}`,
-    { headers: { Authorization: `Bearer ${process.env.ORB_API_KEY}` }, cache: <span class="code-string">"no-store"</span> }
-  );
-  <span class="code-keyword">const</span> data = <span class="code-keyword">await</span> res.json();
-  allUsages.push(...data.data);
-  cursor = data.pagination_metadata?.next_cursor ?? <span class="code-keyword">null</span>;
-} <span class="code-keyword">while</span> (cursor);
-
-<span class="code-comment">// Aggregate: sum consumed_credits per user across license types</span>
-<span class="code-keyword">const</span> byUser = <span class="code-keyword">new</span> Map();
-<span class="code-keyword">for</span> (<span class="code-keyword">const</span> u <span class="code-keyword">of</span> usages) {
-  <span class="code-keyword">const</span> key = u.external_license_id ?? u.license_id;
-  <span class="code-keyword">const</span> ex = byUser.get(key);
-  ex ? ex.consumed += u.consumed_credits
-     : byUser.set(key, { displayName: key, consumed: u.consumed_credits });
-}</div>
-        <p style="font-size:12px;color:var(--ink-mid);margin-top:8px"><code>external_license_id</code> is the display name. <code>consumed_credits</code> is the usage field — not <code>credits_used</code>.</p>
       </div>
 
       <div class="btn-row">
@@ -524,11 +520,19 @@ Authorization: Bearer <span class="code-string">{ORB_API_KEY}</span></div>
         <p>After importing your repo, go to <strong>Project Settings → Environment Variables</strong>. Add <code>ORB_API_KEY</code> and <code>ORB_SUBSCRIPTION_ID</code> as separate variables. They'll be available server-side only — never exposed to the browser.</p>
       </div>
 
-      <div class="download-box">
-        <div style="font-size:32px;margin-bottom:12px">📄</div>
-        <h3>Claude Code Prompt</h3>
-        <p>A complete build prompt with exact API calls, data shapes, awards logic, and visual design tokens — everything Claude Code needs to scaffold the app.</p>
-        <button class="btn btn-blue" onclick="downloadPrompt()">⬇ Download Claude Code Prompt</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:0">
+        <div style="background:linear-gradient(135deg,rgba(95,138,77,0.09),rgba(95,138,77,0.04));border:1.5px solid rgba(95,138,77,0.28);border-radius:12px;padding:28px;text-align:center">
+          <div style="font-size:32px;margin-bottom:12px">📦</div>
+          <h3 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px">Clone the repo</h3>
+          <p style="font-size:13px;color:var(--ink-mid);line-height:1.6;margin-bottom:20px">The finished app is on GitHub. Fork it, add your env vars, and deploy to Vercel in minutes.</p>
+          <a href="https://github.com/ellenmperfect2/usage-leaderboard-v3" target="_blank" class="btn btn-green" style="display:inline-flex;text-decoration:none">↗ View on GitHub</a>
+        </div>
+        <div class="download-box" style="margin-bottom:0">
+          <div style="font-size:32px;margin-bottom:12px">📄</div>
+          <h3 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px">Build with a prompt</h3>
+          <p style="font-size:13px;color:var(--ink-mid);line-height:1.6;margin-bottom:20px">Download the Claude Code prompt — it has the full spec, API calls, awards logic, and design tokens to scaffold from scratch.</p>
+          <button class="btn btn-blue" onclick="downloadPrompt()">⬇ Download Claude Code Prompt</button>
+        </div>
       </div>
 
       <div class="btn-row">
@@ -624,6 +628,15 @@ Authorization: Bearer <span class="code-string">{ORB_API_KEY}</span></div>
     tab.classList.add('active');
     document.getElementById('ep-lic').style.display = id === 'lic' ? '' : 'none';
     document.getElementById('ep-usage').style.display = id === 'usage' ? '' : 'none';
+  }
+
+  function copyCode(id) {
+    const el = document.getElementById(id);
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btns = document.querySelectorAll('button[onclick^="copyCode"]');
+      btns.forEach(b => { if (b.getAttribute('onclick').includes(id)) { b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 2000); } });
+    });
   }
 
   function switchSnippet(btn, id) {
